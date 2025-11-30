@@ -1,0 +1,33 @@
+From https://github.com/forgedbyfreedom/thinkbig-transcripts
+ * branch            main       -> FETCH_HEAD
+   ce86754..7bae4b7  main       -> origin/main
+error: Your local changes to the following files would be overwritten by merge:
+	.github/workflows/auto_update_transcripts.yml
+	github_sync.log
+Please commit your changes or stash them before you merge.
+error: The following untracked working tree files would be overwritten by merge:
+	@BarbellMedicine/master_transcript1.txt
+	@ChrisBumstead/master_transcript1.txt
+	@DrGabrielleLyon/master_transcript1.txt
+	@FoundMyFitness/master_transcript1.txt
+	@HighLifeWorkout/master_transcript1.txt
+	@ISSAPersonalTrainer/master_transcript1.txt
+	@JeffNippard/master_transcript1.txt
+	@MulliganBrothers/master_transcript1.txt
+	@NasmOrgPersonalTrainer/master_transcript1.txt
+	@NicksStrengthandPower/master_transcript1.txt
+	@PeterAttiaMD/master_transcript1.txt
+	@RenaissancePeriodization/master_transcript1.txt
+	@RyanHumiston/master_transcript1.txt
+	@anabolicbodybuilding/master_transcript1.txt
+	@anabolicuniversity/master_transcript1.txt
+	@bodybuildingcom/master_transcript1.txt
+	@eliteftsofficial/master_transcript1.txt
+	@hanyrambod_FST7/master_transcript1.txt
+	@realtattered/master_transcript1.txt
+	@rxmuscle/master_transcript1.txt
+	@sam_sulek/master_transcript1.txt
+	@theconditioncoaches/master_transcript1.txt
+Please move or remove them before you merge.
+Aborting
+Updating ce86754..7bae4b7
