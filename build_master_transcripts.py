@@ -1,229 +1,92 @@
 #!/usr/bin/env python3
 """
-build_master_transcripts.py
---------------------------------
-Rebuilds master transcript files for all channels inside the repo.
+🔥 Forged By Freedom — Master Transcript Builder
+------------------------------------------------
+Combines all per-episode transcript text files from each @Channel folder
+into a single master_transcript1.txt for that channel.
 
-✅ Automatically detects all @channel directories
-✅ Works both locally and in GitHub Actions
-✅ Skips master_transcript*.txt files
-✅ Logs missing folders instead of crashing
-"""
-
-import os
-from datetime import datetime
-
-# Use the current working directory (safe for GitHub Actions)
-REPO_ROOT = os.getcwd()
-
-def combine_transcripts():
-    print(f"🔧 Running in {REPO_ROOT}")
-
-    # Find all directories starting with '@'
-    channel_dirs = [
-        d for d in os.listdir(REPO_ROOT)
-        if d.startswith("@") and os.path.isdir(os.path.join(REPO_ROOT, d))
-    ]
-
-    if not channel_dirs:
-        print("⚠️ No @channel directories found — nothing to build.")
-        return
-
-    for channel in channel_dirs:
-        channel_path = os.path.join(REPO_ROOT, channel)
-        print(f"📂 Processing channel: {channel}")
-
-        # Find all text transcripts (skip master files)
-        txt_files = [
-            f for f in os.listdir(channel_path)
-            if f.endswith(".txt") and not f.startswith("master_transcript")
-        ]
-
-        if not txt_files:
-            print(f"⚠️ No transcript files found in {channel}, skipping.")
-            continue
-
-        output_path = os.path.join(channel_path, "master_transcript1.txt")
-
-        with open(output_path, "w", encoding="utf-8") as outfile:
-            for txt_file in sorted(txt_files):
-                file_path = os.path.join(channel_path, txt_file)
-                try:
-                    with open(file_path, "r", encoding="utf-8") as infile:
-                        outfile.write(f"### {txt_file}\n")
-                        outfile.write(infile.read())
-                        outfile.write("\n\n")
-                except Exception as e:
-                    print(f"❌ Error reading {file_path}: {e}")
-
-            outfile.write(f"\n=== Rebuilt on {datetime.utcnow().isoformat()}Z ===\n")
-
-        print(f"✅ Built {output_path}")
-
-if __name__ == "__main__":
-    combine_transcripts()#!/usr/bin/env python3
-"""
-build_master_transcripts.py
---------------------------------
-Rebuilds master transcript files for all channels inside the repo.
-
-✅ Automatically detects all @channel directories
-✅ Works both locally and in GitHub Actions
-✅ Skips master_transcript*.txt files
-✅ Logs missing folders instead of crashing
-"""
-
-import os
-from datetime import datetime
-
-# Use the current working directory (safe for GitHub Actions)
-REPO_ROOT = os.getcwd()
-
-def combine_transcripts():
-    print(f"🔧 Running in {REPO_ROOT}")
-
-    # Find all directories starting with '@'
-    channel_dirs = [
-        d for d in os.listdir(REPO_ROOT)
-        if d.startswith("@") and os.path.isdir(os.path.join(REPO_ROOT, d))
-    ]
-
-    if not channel_dirs:
-        print("⚠️ No @channel directories found — nothing to build.")
-        return
-
-    for channel in channel_dirs:
-        channel_path = os.path.join(REPO_ROOT, channel)
-        print(f"📂 Processing channel: {channel}")
-
-        # Find all text transcripts (skip master files)
-        txt_files = [
-            f for f in os.listdir(channel_path)
-            if f.endswith(".txt") and not f.startswith("master_transcript")
-        ]
-
-        if not txt_files:
-            print(f"⚠️ No transcript files found in {channel}, skipping.")
-            continue
-
-        output_path = os.path.join(channel_path, "master_transcript1.txt")
-
-        with open(output_path, "w", encoding="utf-8") as outfile:
-            for txt_file in sorted(txt_files):
-                file_path = os.path.join(channel_path, txt_file)
-                try:
-                    with open(file_path, "r", encoding="utf-8") as infile:
-                        outfile.write(f"### {txt_file}\n")
-                        outfile.write(infile.read())
-                        outfile.write("\n\n")
-                except Exception as e:
-                    print(f"❌ Error reading {file_path}: {e}")
-
-            outfile.write(f"\n=== Rebuilt on {datetime.utcnow().isoformat()}Z ===\n")
-
-        print(f"✅ Built {output_path}")
-
-if __name__ == "__main__":
-    combine_transcripts()
-#!/usr/bin/env python3
-"""
-ForgedByFreedom Transcript Builder
----------------------------------
-Combines individual transcript text files from each @Channel folder
-into a single master_transcript1.txt per channel.
-
-Works both locally and inside GitHub Actions.
+✅ Works locally and inside GitHub Actions
+✅ Skips existing master_transcript*.txt files
+✅ Automatically handles any number of channels
+✅ Adds rebuild timestamp
+✅ Splits into master_transcript2.txt, master_transcript3.txt, etc. if file > 95 MB
 """
 
 import os
 import sys
 from datetime import datetime
 
-# 🧭 Auto-detect the repo root directory (wherever this script is executed)
+# --- Auto-detect repository root (wherever this script lives) ---
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 
-def combine_transcripts():
-    print("🔧 Starting transcript rebuild process...\n")
+# --- Split threshold in MB ---
+MAX_SIZE_MB = 95
 
-    # Find all folders starting with "@"
+def combine_transcripts_for_channel(channel_path: str):
+    """Combine all transcript .txt files in a channel directory."""
+    txt_files = sorted([
+        f for f in os.listdir(channel_path)
+        if f.endswith(".txt") and not f.startswith("master_transcript")
+    ])
+
+    if not txt_files:
+        print(f"⚠️ No transcripts found in {channel_path}")
+        return
+
+    output_index = 1
+    output_file = os.path.join(channel_path, f"master_transcript{output_index}.txt")
+    out = open(output_file, "w", encoding="utf-8")
+    current_size = 0
+
+    for fname in txt_files:
+        fpath = os.path.join(channel_path, fname)
+        try:
+            with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
+                header = f"\n\n=== FILE: {fname} ===\n\n"
+                out.write(header)
+                out.write(f.read())
+        except Exception as e:
+            print(f"❌ Error reading {fname}: {e}")
+            continue
+
+        current_size = os.path.getsize(output_file) / (1024 * 1024)
+        if current_size >= MAX_SIZE_MB:
+            out.write(f"\n\n=== Split at {current_size:.2f} MB ===\n")
+            out.close()
+            print(f"📦 Created {output_file} ({current_size:.2f} MB)")
+            output_index += 1
+            output_file = os.path.join(channel_path, f"master_transcript{output_index}.txt")
+            out = open(output_file, "w", encoding="utf-8")
+            current_size = 0
+
+    out.write(f"\n=== Rebuilt on {datetime.utcnow().isoformat()}Z ===\n")
+    out.close()
+    print(f"✅ Finished {channel_path}/master_transcript{output_index}.txt\n")
+
+
+def rebuild_all_channels():
+    """Iterate through all @Channel directories and rebuild master transcripts."""
+    print("🔧 Starting master transcript rebuild process...\n")
     channel_dirs = [
         d for d in os.listdir(REPO_ROOT)
         if d.startswith("@") and os.path.isdir(os.path.join(REPO_ROOT, d))
     ]
 
     if not channel_dirs:
-        print("⚠️ No channel folders found (expected directories like @ThinkBIGBodybuilding).")
-        sys.exit(1)
+        print("⚠️ No @channel directories found — nothing to rebuild.")
+        return
 
-    # Process each channel directory
-    for channel in channel_dirs:
-        channel_path = os.path.join(REPO_ROOT, channel)
-        txt_files = sorted([
-            f for f in os.listdir(channel_path)
-            if f.endswith(".txt") and not f.startswith("master_transcript")
-        ])
+    for channel in sorted(channel_dirs):
+        ch_path = os.path.join(REPO_ROOT, channel)
+        print(f"📘 Building transcripts for {channel}...")
+        combine_transcripts_for_channel(ch_path)
 
-        if not txt_files:
-            print(f"⚠️ No .txt transcripts found in {channel}/ — skipping.")
-            continue
+    print("🎯 All transcripts rebuilt successfully.\n")
 
-        output_path = os.path.join(channel_path, "master_transcript1.txt")
-        print(f"📘 Building master transcript for {channel} ...")
-
-        with open(output_path, "w", encoding="utf-8") as outfile:
-            for fname in txt_files:
-                fpath = os.path.join(channel_path, fname)
-                with open(fpath, "r", encoding="utf-8") as infile:
-                    outfile.write(infile.read().strip() + "\n\n")
-            outfile.write(f"\n\n=== Rebuilt on {datetime.utcnow().isoformat()}Z ===\n")
-
-        print(f"✅ Finished {channel} → {output_path}\n")
-
-    print("🎯 All transcripts combined successfully.")
 
 if __name__ == "__main__":
     try:
-        combine_transcripts()
+        rebuild_all_channels()
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Fatal error: {e}")
         sys.exit(1)
-import os
-
-# ====== CONFIG ======
-BASE_DIR = "/Users/weero/thinkbig_podcast/transcripts/@ThinkBIGBodybuilding"
-OUTPUT_PREFIX = os.path.join(BASE_DIR, "master_transcript")
-MAX_SIZE_MB = 100  # split after each ~100 MB
-# ====================
-
-def combine_transcripts():
-    txt_files = [os.path.join(BASE_DIR, f) for f in os.listdir(BASE_DIR) if f.endswith(".txt")]
-    txt_files.sort(key=os.path.getmtime)  # sort by modified date
-    
-    if not txt_files:
-        print("⚠️ No .txt transcript files found.")
-        return
-
-    output_index = 1
-    current_size = 0
-    output_file = f"{OUTPUT_PREFIX}{output_index}.txt"
-    out = open(output_file, "w", encoding="utf-8")
-
-    for file in txt_files:
-        with open(file, "r", encoding="utf-8", errors="ignore") as f:
-            content = f"\n\n=== {os.path.basename(file)} ===\n\n" + f.read()
-            out.write(content)
-            current_size = os.path.getsize(output_file) / (1024 * 1024)
-            if current_size >= MAX_SIZE_MB:
-                out.close()
-                print(f"✅ Created {output_file} ({current_size:.2f} MB)")
-                output_index += 1
-                output_file = f"{OUTPUT_PREFIX}{output_index}.txt"
-                out = open(output_file, "w", encoding="utf-8")
-                current_size = 0
-
-    out.close()
-    print(f"✅ Finished! Last file: {output_file}")
-
-if __name__ == "__main__":
-    combine_transcripts()
-
