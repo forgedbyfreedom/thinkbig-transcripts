@@ -3,7 +3,7 @@ name: Auto Update Master Transcripts
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * *'  # runs every day at 6 AM UTC
+    - cron: '0 6 * * *'  # Runs daily at 6 AM UTC
 
 permissions:
   contents: write
@@ -15,118 +15,58 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies safely
+      - name: Install dependencies
         run: |
-          if [ -f requirements.txt ]; then
-            echo "📦 Installing from requirements.txt..."
-            pip install -r requirements.txt
-          else
-            echo "⚙️ No requirements.txt found — installing defaults..."
-            pip install "requests>=2.31.0" "beautifulsoup4>=4.12.0" "openai>=1.2.0"
-          fi
+          echo "🔧 Installing Python dependencies..."
+          pip install -r requirements.txt || echo "No requirements.txt found — skipping."
+          pip install requests beautifulsoup4 openai || true
+
+      - name: Check working directory
+        run: |
+          echo "📂 Current working directory:"
+          pwd
+          echo "📂 Listing contents:"
+          ls -la
 
       - name: Run transcript builder
         run: |
-          echo "🔧 Rebuilding master transcripts..."
-          python build_master_transcripts.py
+          echo "🚀 Starting master transcript builder..."
+          if [ -f "./build_master_transcripts.py" ]; then
+            echo "✅ Found build_master_transcripts.py in current directory."
+            python3 ./build_master_transcripts.py
+          elif [ -f "${GITHUB_WORKSPACE}/build_master_transcripts.py" ]; then
+            echo "⚙️ Running using full GitHub path..."
+            python3 "${GITHUB_WORKSPACE}/build_master_transcripts.py"
+          else
+            echo "❌ build_master_transcripts.py not found in repo."
+            exit 1
+          fi
 
-      - name: Upload master transcripts to OpenAI
-        if: success()
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - name: Commit and push updated transcripts
         run: |
-          echo "📤 Uploading master transcripts to OpenAI..."
-          python <<'PYCODE'
-import os, glob, openai
-
-openai.api_key = os.environ["OPENAI_API_KEY"]
-
-for path in glob.glob("**/master_transcript*.txt", recursive=True):
-    with open(path, "rb") as f:
-        try:
-            resp = openai.files.create(file=f, purpose="assistants")
-            print(f"✅ Uploaded {path} → id={resp.id}")
-        except Exception as e:
-            print(f"❌ Failed to upload {path}: {e}")
-PYCODE
-
-      - name: Commit and safely push changes
-        run: |
-          set -e
+          echo "🪶 Committing updates to GitHub..."
           git config user.name "GitHub Action"
           git config user.email "actions@github.com"
 
-          echo "🔄 Fetching latest remote state..."
           git fetch origin main
+          git pull --rebase origin main || true
 
-          echo "🧩 Rebasing on top of latest main..."
-          git rebase origin/main || {
-            echo "⚠️ Rebase failed, merging instead..."
-            git merge --strategy-option ours origin/main -m "Merge remote changes safely"
+          git add .
+          git diff-index --quiet HEAD || git commit -m "Auto-update master transcripts $(date -u +"%Y-%m-%d %H:%M:%S")"
+
+          echo "⬆️ Attempting push..."
+          git push origin main || {
+            echo "⚠️ Push rejected, retrying with rebase..."
+            git pull --rebase origin main
+            git push origin main || {
+              echo "❌ Push failed even after rebase."
+              exit 1
+            }
           }
-
-          echo "📝 Adding and committing transcript updates..."
-          git add -A
-          git commit -m "Auto-update master transcripts $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit."
-
-          echo "🚀 Pushing changes to remote..."
-          git push origin HEAD:main || {
-            echo "⚠️ Normal push failed, retrying with force-with-lease..."
-            git push --force-with-lease origin HEAD:main
-          }
-
-          echo "✅ Finished sync successfully."
-      - name: Commit and safely push changes
-        run: |
-          set -e
-          git config user.name "GitHub Action"
-          git config user.email "actions@github.com"
-
-          echo "🔄 Fetching latest remote state..."
-          git fetch origin main
-
-          echo "🧩 Rebasing on top of latest main..."
-          git rebase origin/main || {
-            echo "⚠️ Rebase failed, trying merge instead..."
-            git merge --strategy-option ours origin/main -m "Merge remote changes safely"
-          }
-
-          echo "📝 Adding and committing transcript updates..."
-          git add -A
-          git commit -m "Auto-update master transcripts $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit."
-
-          echo "🚀 Pushing changes to remote..."
-          git push origin HEAD:main || {
-            echo "⚠️ Normal push failed, retrying with force-with-lease..."
-            git push --force-with-lease origin HEAD:main
-          }
-
-          echo "✅ All done!"
-      - name: Commit and safely push changes
-        run: |
-          set -e
-          git config user.name "GitHub Action"
-          git config user.email "actions@github.com"
-
-          echo "🔄 Syncing with latest remote before committing..."
-          git fetch origin main
-          git checkout main
-          git pull --rebase origin main || echo "⚠️ Pull with rebase failed, continuing."
-
-          echo "📝 Adding and committing any transcript updates..."
-          git add -A
-          git commit -m "Auto-update master transcripts $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes to commit."
-
-          echo "🚀 Pushing updates to remote..."
-          git push origin main || (echo "⚠️ Push failed, retrying with force-with-lease..." && git push --force-with-lease origin main)
-
-          echo "✅ Finished Git sync successfully."
 
